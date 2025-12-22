@@ -634,7 +634,17 @@ public class Client extends ChannelInboundHandlerAdapter {
     }
 
     public boolean checkPic(String other) {
-        if (!(GameConfig.getServerBoolean("enable_pic") && !canBypassPic())) {
+        // 如果开启了pic且没有处于免输入状态(canBypassPic)，则需要校验pic
+        // If pic is enabled and not in bypass state (canBypassPic), verify pic
+        boolean enablePic = GameConfig.getServerBoolean("enable_pic");
+        boolean canBypass = canBypassPic();
+
+        // Debug logging to help diagnose why check is skipped
+        if (GameConfig.getServerBoolean("use_debug")) {
+            log.info("checkPic enable_pic: {}, canBypassPic: {}", enablePic, canBypass);
+        }
+
+        if (!(enablePic && !canBypass)) {
             return true;
         }
 
