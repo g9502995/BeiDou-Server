@@ -41,6 +41,7 @@ import org.gms.server.TimerManager;
 import org.gms.server.expeditions.Expedition;
 import org.gms.server.life.LifeFactory;
 import org.gms.server.life.Monster;
+import org.gms.server.life.MonsterListener;
 import org.gms.server.life.NPC;
 import org.gms.server.maps.MapManager;
 import org.gms.server.maps.MapleMap;
@@ -465,9 +466,23 @@ public class EventInstanceManager {
         }
     }
 
-    public void registerMonster(Monster mob) {
+    public void registerMonster(final Monster mob) {
         if (!mob.getStats().isFriendly()) { //We cannot register moon bunny
             mobs.add(mob);
+            mob.addListener(new MonsterListener() {
+                @Override
+                public void monsterKilled(int aniTime) {
+                    EventInstanceManager.this.monsterKilled(mob, true);
+                }
+
+                @Override
+                public void monsterDamaged(Character from, int trueDmg) {
+                }
+
+                @Override
+                public void monsterHealed(int trueHeal) {
+                }
+            });
         }
     }
 
@@ -508,13 +523,13 @@ public class EventInstanceManager {
 
         scriptLock.lock();
         try {
-            mobs.remove(mob);
+            if (mobs.remove(mob)) {
+                if (eventStarted) {
+                    scriptResult = 1;
 
-            if (eventStarted) {
-                scriptResult = 1;
-
-                if (mobs.isEmpty()) {
-                    scriptResult = 2;
+                    if (mobs.isEmpty()) {
+                        scriptResult = 2;
+                    }
                 }
             }
         } finally {
