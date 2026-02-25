@@ -1529,7 +1529,7 @@ public class MapleMap {
                         chr = defaultChr;
                     }
 
-                    this.killMonster(mob, chr, true);
+                    this.damageMonster(chr, mob, Integer.MAX_VALUE);
                 }
             }
         }
@@ -2617,6 +2617,16 @@ public class MapleMap {
         }
 
         chr.receivePartyMemberHP();
+
+        // Damage Skin
+        chr.sendPacket(PacketCreator.getDamageSkinPacket(chr.getId(), chr.getDamageSkinId()));
+        broadcastMessage(chr, PacketCreator.getDamageSkinPacket(chr.getId(), chr.getDamageSkinId()), false);
+        for (Character other : getAllPlayers()) {
+            if (other.getId() != chr.getId()) {
+                chr.sendPacket(PacketCreator.getDamageSkinPacket(other.getId(), other.getDamageSkinId()));
+            }
+        }
+        
         announcePlayerDiseases(chr.getClient());
     }
 
