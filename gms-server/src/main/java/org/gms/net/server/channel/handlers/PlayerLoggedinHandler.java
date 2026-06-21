@@ -366,6 +366,9 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
                 eqpInv.unlockInventory();
             }
 
+            // Trigger equipChanged to apply set effects and update local stats upon login
+            player.equipChanged();
+
             c.sendPacket(PacketCreator.updateBuddylist(player.getBuddylist().getBuddies()));
 
             CharacterNameAndId pendingBuddyRequest = c.getPlayer().getBuddylist().pollPendingRequest();

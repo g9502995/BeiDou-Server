@@ -252,6 +252,9 @@ public class Character extends AbstractCharacterObject {
     private long jailExpiration = -1;
     private transient int localstr, localdex, localluk, localint_, localmagic, localwatk;
     private transient int equipmaxhp, equipmaxmp, equipstr, equipdex, equipluk, equipint_, equipmagic, equipwatk, localchairhp, localchairmp;
+    @Getter
+    private transient int setmaxhp, setmaxmp, setstr, setdex, setint_, setluk, setmagic, setwatk;
+    private transient int lastSetStr = 0, lastSetDex = 0, lastSetInt = 0, lastSetLuk = 0;
     private int localchairrate;
     @Getter
     private boolean hidden;
@@ -6894,6 +6897,8 @@ public class Character extends AbstractCharacterObject {
             //equipspeed = 0;
             //equipjump = 0;
 
+            Map<Integer, Integer> equippedSetCounts = new HashMap<>();
+
             for (Item item : getInventory(InventoryType.EQUIPPED)) {
                 Equip equip = (Equip) item;
                 equipmaxhp += equip.getHp();
@@ -6906,19 +6911,46 @@ public class Character extends AbstractCharacterObject {
                 equipwatk += equip.getWatk();
                 //equipspeed += equip.getSpeed();
                 //equipjump += equip.getJump();
+
+                int setID = org.gms.server.SetItemProvider.getInstance().getSetID(item.getItemId());
+                if (setID > 0) {
+                    equippedSetCounts.put(setID, equippedSetCounts.getOrDefault(setID, 0) + 1);
+                }
+            }
+
+            setmaxhp = 0;
+            setmaxmp = 0;
+            setstr = 0;
+            setdex = 0;
+            setint_ = 0;
+            setluk = 0;
+            setmagic = 0;
+            setwatk = 0;
+
+            List<org.gms.server.SetItemProvider.SetItemEffect> setEffects = org.gms.server.SetItemProvider.getInstance().getActiveEffects(equippedSetCounts);
+            for (org.gms.server.SetItemProvider.SetItemEffect eff : setEffects) {
+                setmaxhp += eff.incMHP;
+                setmaxmp += eff.incMMP;
+                setstr += eff.incSTR + eff.incAllStat;
+                setdex += eff.incDEX + eff.incAllStat;
+                setint_ += eff.incINT + eff.incAllStat;
+                setluk += eff.incLUK + eff.incAllStat;
+                setmagic += eff.incMAD + eff.incINT + eff.incAllStat;
+                setwatk += eff.incPAD;
+                // Add logic for ACC, EVA, PDD, MDD, Speed, Jump if they are used elsewhere in local stats
             }
 
             equipchanged = false;
         }
 
-        localMaxHp += equipmaxhp;
-        localMaxMp += equipmaxmp;
-        localdex += equipdex;
-        localint_ += equipint_;
-        localstr += equipstr;
-        localluk += equipluk;
-        localmagic += equipmagic;
-        localwatk += equipwatk;
+        localMaxHp += equipmaxhp + setmaxhp;
+        localMaxMp += equipmaxmp + setmaxmp;
+        localdex += equipdex + setdex;
+        localint_ += equipint_ + setint_;
+        localstr += equipstr + setstr;
+        localluk += equipluk + setluk;
+        localmagic += equipmagic + setmagic;
+        localwatk += equipwatk + setwatk;
     }
 
     public void reapplyLocalStats() {
@@ -7104,8 +7136,21 @@ public class Character extends AbstractCharacterObject {
             List<Pair<Stat, Integer>> hpmpupdate = recalcLocalStats();
             enforceMaxHpMp();
 
-            if (!hpmpupdate.isEmpty()) {
-                sendPacket(PacketCreator.updatePlayerStats(hpmpupdate, true, this));
+            boolean setStatsChanged = (setstr != lastSetStr || setdex != lastSetDex || setint_ != lastSetInt || setluk != lastSetLuk);
+            
+            if (!hpmpupdate.isEmpty() || setStatsChanged) {
+                List<Pair<Stat, Integer>> statups = new ArrayList<>(hpmpupdate);
+                if (setStatsChanged) {
+                    statups.add(new Pair<>(Stat.STR, getStr() + setstr));
+                    statups.add(new Pair<>(Stat.DEX, getDex() + setdex));
+                    statups.add(new Pair<>(Stat.INT, getInt() + setint_));
+                    statups.add(new Pair<>(Stat.LUK, getLuk() + setluk));
+                    lastSetStr = setstr;
+                    lastSetDex = setdex;
+                    lastSetInt = setint_;
+                    lastSetLuk = setluk;
+                }
+                sendPacket(PacketCreator.updatePlayerStats(statups, true, this));
             }
 
             if (oldmaxhp != localMaxHp) {   // thanks Wh1SK3Y (Suwaidy) for pointing out a deadlock occuring related to party members HP

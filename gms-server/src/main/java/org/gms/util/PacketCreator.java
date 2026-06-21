@@ -7531,4 +7531,11 @@ public class PacketCreator {
         return p;
     }
 
+    public static Packet openExternalBrowser(String url) {
+        // 0x28 是 OPEN_FULL_CLIENT_DOWNLOAD_LINK
+        ByteBufOutPacket p = new ByteBufOutPacket(SendOpcode.OPEN_FULL_CLIENT_DOWNLOAD_LINK);
+        p.writeString(url);
+        return p;
+    }
+
 }
